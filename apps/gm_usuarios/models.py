@@ -54,27 +54,12 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     nombres = models.CharField(_("Nombres"), max_length=150)
     apellido_paterno = models.CharField(_("Apellido paterno"), max_length=50)
     apellido_materno = models.CharField(_("Apellido materno"), max_length=50)
-    
-    # cargo = models.CharField(_("Cargo"), max_length=100)
-    # departamento = models.CharField(_("Departamento"), max_length=100)
-    # telefono = models.CharField(_("Teléfono"), max_length=20, blank=True)
-    # direccion = models.CharField(_("Dirección"), max_length=255, blank=True)
-    # fecha_nacimiento = models.DateField(_("Fecha de nacimiento"), null=True, blank=True)
     foto_perfil = models.ImageField(_("Foto de perfil"), upload_to='perfiles/', null=True, blank=True)
     
     is_active = models.BooleanField(_("Activo"), default=False)
     is_staff = models.BooleanField(_("Es staff"), default=False)
     date_joined = models.DateTimeField(_("Fecha de registro"), default=timezone.now)
     ultimo_acceso = models.DateTimeField(_("Último acceso"), null=True, blank=True)
-    
-    # es_funcionario = models.BooleanField(_("Es funcionario"), default=True)
-    # nivel_acceso = models.IntegerField(_("Nivel de acceso"), default=1)
-    # estado = models.CharField(_("Estado"), max_length=20, choices=[
-    #     ('pendiente', 'Pendiente de activación'),
-    #     ('activo', 'Activo'),
-    #     ('inactivo', 'Inactivo'),
-    #     ('suspendido', 'Suspendido')
-    # ], default='pendiente')
 
     objects = UsuarioManager()
 
@@ -86,14 +71,11 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = _("usuarios")
 
     def __str__(self):
-        return f"{self.nombre_completo} ({self.email})"
+        return f"{self.get_full_name} ({self.email})"
 
     @property
-    def nombre_completo(self):
-        return f"{self.apellido_paterno} {self.apellido_materno}, {self.nombres} "
-
-    # def get_departamento_display(self):
-    #     return self.departamento
+    def get_full_name(self):
+        return f"{self.apellido_paterno} {self.apellido_materno}, {self.nombres}"
 
     def desactivar_usuario(self):
         # self.estado = 'suspendido'
@@ -107,14 +89,14 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
     def save(self, *args, **kwargs):
         site_url = settings.SITE_URL
-        print(f"email {site_url}")
         if not self.email.endswith(f'@{site_url}'):  # Ajusta esto al dominio de tu municipalidad
             raise ValueError("El email debe ser un correo institucional válido.")
         is_new = self.pk is None
         
-        self.apellido_paterno = self.apellido_paterno.upper()
-        self.apellido_materno = self.apellido_materno.upper()
-        self.nombres = self.nombres.upper()
+        self.apellido_paterno = self.apellido_paterno.strip().upper()
+        self.apellido_materno = self.apellido_materno.strip().upper()
+        self.nombres = self.nombres.strip().upper()
+        self.email = self.email.lower()
         
         super().save(*args, **kwargs)
         if is_new:
@@ -127,7 +109,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         # activation_link = f"{settings.SITE_URL}/activar-cuenta/{uid}/{token}/"
         # subject = 'Activa tu cuenta en el Sistema de Gestión Municipal'
         # message = f"""
-        # Hola {self.nombre_completo},
+        # Hola {self.get_full_name},
 
         # Se ha creado una cuenta para ti en el Sistema de Gestión Municipal. 
         # Para activar tu cuenta y establecer tu contraseña, por favor haz clic en el siguiente enlace:
