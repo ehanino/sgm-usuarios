@@ -1,3 +1,4 @@
+import os
 import uuid
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
@@ -43,6 +44,14 @@ class UsuarioManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
+def user_directory_path(instance, filename):
+    # Obtener la extensión del archivo original
+    ext = filename.split('.')[-1]
+    # Crear el nuevo nombre de archivo
+    filename = f"{instance.id}.{ext}"
+    # Devolver la ruta completa
+    return os.path.join('perfiles', filename)
+
 class Usuario(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(
@@ -50,11 +59,15 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         unique=True,
         validators=[EmailValidator(message=_("Ingrese un email institucional válido."))]
     )
-    dni = models.CharField(_("DNI"), max_length=20, unique=True)
+    dni = models.CharField(_("DNI"), max_length=20, unique=True, null=False, blank=False)
     nombres = models.CharField(_("Nombres"), max_length=150)
     apellido_paterno = models.CharField(_("Apellido paterno"), max_length=50)
     apellido_materno = models.CharField(_("Apellido materno"), max_length=50)
-    foto_perfil = models.ImageField(_("Foto de perfil"), upload_to='perfiles/', null=True, blank=True)
+    foto_perfil = models.ImageField(_("Foto de perfil"),
+                                    upload_to=user_directory_path,
+                                    default="perfiles/user.png",
+                                    null=True,
+                                    blank=True)
     
     is_active = models.BooleanField(_("Activo"), default=False)
     is_staff = models.BooleanField(_("Es staff"), default=False)
@@ -88,7 +101,14 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         self.save()
 
     def save(self, *args, **kwargs):
+        print("-------- Datos del Usuario --------")
+        for key, value in self.__dict__.items():
+            if not key.startswith('_'):  # Excluye atributos internos de Django
+                print(f"{key}: {value}")
+                print("-----------------------------------")
+    
         site_url = settings.SITE_URL
+        
         if not self.email.endswith(f'@{site_url}'):  # Ajusta esto al dominio de tu municipalidad
             raise ValueError("El email debe ser un correo institucional válido.")
         is_new = self.pk is None
